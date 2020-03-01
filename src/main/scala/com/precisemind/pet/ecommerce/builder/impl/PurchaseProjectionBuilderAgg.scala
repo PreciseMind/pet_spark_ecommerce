@@ -60,7 +60,8 @@ object PurchaseProjectionBuilderAgg extends PurchaseProjectionBuilder {
 
     import spark.implicits._
 
-    processDS.groupByKey(click => click.userId)
+    processDS.where($"eventType".isin(EventType.APP_OPEN,EventType.PURCHASE, EventType.APP_CLOSE))
+      .groupByKey(click => click.userId)
       .agg(TransactionAggregator.toColumn.alias("transactions").as[List[Transaction]])
       .select($"value".as("userId"), $"transactions")
       .select("userId", "transactions.*")
