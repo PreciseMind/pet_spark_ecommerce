@@ -2,13 +2,13 @@ package com.precisemind.pet.ecommerce
 
 import java.sql.Timestamp
 
-import com.precisemind.pet.ecommerce.builder.impl.PurchaseProjectionBuilderAgg
+import com.precisemind.pet.ecommerce.builder.impl.PurchaseProjectionBuilderSQL
 import com.precisemind.pet.ecommerce.model._
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 
-class PurchaseProjectionBuilderAgg extends AnyFunSuite {
+class PurchaseProjectionBuilderSQLTest extends AnyFunSuite {
 
   val AppName = "ECommerce"
   val Master = "local[3]"
@@ -50,7 +50,7 @@ class PurchaseProjectionBuilderAgg extends AnyFunSuite {
 
     val input: Dataset[SourceClick] = spark.createDataset(clickTestData)
     val testClick: FillClick = FillClick("u1", "u1_e1", Timestamp.valueOf("2019-01-01 00:00:00"), "app_open", "{\"campaign_id\": \"cmp1\",  \"channel_id\": \"Google Ads\"}", "cmp1", "Google Ads", null)
-    val actualRes = PurchaseProjectionBuilderAgg.buildSourceDSTest(input.toDF())
+    val actualRes = PurchaseProjectionBuilderSQL.buildSourceDFTest(input.toDF())
       .where($"userId" === testClick.userId and $"eventId" === testClick.eventId)
       .as[FillClick]
       .first()
@@ -62,7 +62,7 @@ class PurchaseProjectionBuilderAgg extends AnyFunSuite {
 
     val input: Dataset[SourceClick] = spark.createDataset(clickTestData)
     val testClick: FillClick = FillClick("u1", "u1_e6", Timestamp.valueOf("2019-01-01 0:01:00"), "purchase", "{\"purchase_id\": \"p1\"}", null, null, "p1")
-    val actualRes = PurchaseProjectionBuilderAgg.buildSourceDSTest(input.toDF())
+    val actualRes = PurchaseProjectionBuilderSQL.buildSourceDFTest(input.toDF())
       .where($"userId" === testClick.userId and $"eventId" === testClick.eventId)
       .as[FillClick]
       .first()
@@ -70,18 +70,18 @@ class PurchaseProjectionBuilderAgg extends AnyFunSuite {
     assert(testClick == actualRes)
   }
 
-  test("Test build Transaction test") {
+  test("Test build Sessions test") {
 
     val input: Dataset[SourceClick] = spark.createDataset(clickTestData)
-    val testTransaction: FillTransaction = FillTransaction("p1", "u1_e1", "cmp1", "Google Ads")
+    val testSession: FillSession = FillSession("p1", "u1_e1", "cmp1", "Google Ads")
 
-    val source = PurchaseProjectionBuilderAgg.buildSourceDSTest(input.toDF())
-    val actualRes = PurchaseProjectionBuilderAgg.buildTransactionsDS(source)
-      .where($"sessionId" === testTransaction.sessionId)
-      .as[FillTransaction]
+    val source = PurchaseProjectionBuilderSQL.buildSourceDFTest(input.toDF())
+    val actualRes = PurchaseProjectionBuilderSQL.buildSessionsDF(source)
+      .where($"sessionId" === testSession.sessionId)
+      .as[FillSession]
       .first()
 
-    assert(testTransaction == actualRes)
+    assert(testSession == actualRes)
   }
 
   test("Test build Projection purchase") {
@@ -90,9 +90,9 @@ class PurchaseProjectionBuilderAgg extends AnyFunSuite {
     val inputPurchases: Dataset[Purchase] = spark.createDataset(purchaseTestData)
     val testProjectionPurchase: ProjectionPurchase = ProjectionPurchase("p2", Timestamp.valueOf("2019-01-01 00:03:10"), 200.0, true, "u2_e1", "cmp1", "Yandex Ads")
 
-    val source = PurchaseProjectionBuilderAgg.buildSourceDSTest(inputClicks.toDF())
-    val transactions = PurchaseProjectionBuilderAgg.buildTransactionsDS(source)
-    val actualRes = PurchaseProjectionBuilderAgg.buildProjectedPurchaseDF(inputPurchases, transactions)
+    val source = PurchaseProjectionBuilderSQL.buildSourceDFTest(inputClicks.toDF())
+    val sessions = PurchaseProjectionBuilderSQL.buildSessionsDF(source)
+    val actualRes = PurchaseProjectionBuilderSQL.buildProjectedPurchasesDF(inputPurchases.toDF(), sessions)
       .where($"purchaseId" === testProjectionPurchase.purchaseId and $"sessionId" === testProjectionPurchase.sessionId)
       .as[ProjectionPurchase]
       .first()
@@ -100,3 +100,5 @@ class PurchaseProjectionBuilderAgg extends AnyFunSuite {
     assert(actualRes === testProjectionPurchase)
   }
 }
+
+
